@@ -1,0 +1,55 @@
+{
+  "name": "olla-pilot",
+  "displayName": "OllaPilot: Local Code Suggestions",
+  "description": "Blazing fast, local GitHub Copilot alternative powered by Ollama",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "customsuggester.toggle",
+        "title": "Ollama Suggestions: Toggle On/Off"
+      },
+      {
+        "command": "customsuggester.selectModel",
+        "title": "Ollama Suggestions: Select Model"
+      }
+    ],
+    "configuration": {
+      "title": "OllaPilot Settings",
+      "properties": {
+        "ollapilot.ollamaUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "URL of the Ollama server (Local or Remote)"
+        },
+        "ollapilot.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable OllaPilot code suggestions"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@types/node": "20.x",
+    "typescript": "^5.4.5"
+  }
+}
