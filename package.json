@@ -3,6 +3,11 @@
   "displayName": "OllaPilot: Local Code Suggestions",
   "description": "Blazing fast, local GitHub Copilot alternative powered by Ollama",
   "version": "1.0.0",
+  "publisher": "vigneshkarnika",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ollapilot/ollapilot"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -22,8 +27,49 @@
       {
         "command": "customsuggester.selectModel",
         "title": "Ollama Suggestions: Select Model"
+      },
+      {
+        "command": "ollapilot.improveCode",
+        "title": "OllaPilot: Improve Code"
+      },
+      {
+        "command": "ollapilot.fix",
+        "title": "OllaPilot: Fix Code"
+      },
+      {
+        "command": "ollapilot.summarize",
+        "title": "OllaPilot: Summarize"
+      },
+      {
+        "command": "ollapilot.elaborate",
+        "title": "OllaPilot: Elaborate"
+      },
+      {
+        "command": "ollapilot.customPrompt",
+        "title": "OllaPilot: Custom Prompt"
       }
     ],
+    "submenus": [
+      {
+        "id": "ollapilot.submenu",
+        "label": "OllaPilot"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "submenu": "ollapilot.submenu",
+          "group": "ollapilot"
+        }
+      ],
+      "ollapilot.submenu": [
+        { "command": "ollapilot.improveCode", "when": "editorHasSelection" },
+        { "command": "ollapilot.fix", "when": "editorHasSelection" },
+        { "command": "ollapilot.summarize", "when": "editorHasSelection" },
+        { "command": "ollapilot.elaborate", "when": "editorHasSelection" },
+        { "command": "ollapilot.customPrompt" }
+      ]
+    },
     "configuration": {
       "title": "OllaPilot Settings",
       "properties": {
@@ -36,20 +82,33 @@
           "type": "boolean",
           "default": true,
           "description": "Enable or disable OllaPilot code suggestions"
+        },
+        "ollapilot.debounceMs": {
+          "type": "number",
+          "default": 300,
+          "minimum": 100,
+          "maximum": 2000,
+          "description": "Debounce delay in milliseconds before triggering completion (lower = faster, higher = less load)"
         }
       }
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "node esbuild.js --production",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/langgraph": "^0.2.0",
+    "@langchain/ollama": "^0.2.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.90.0",
     "@types/node": "20.x",
+    "esbuild": "^0.25.0",
     "typescript": "^5.4.5"
   }
 }

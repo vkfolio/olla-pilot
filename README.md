@@ -17,9 +17,10 @@
 ### Prerequisites
 
 1. Install [Ollama](https://ollama.com/).
-2. Pull a model tailored for coding. Recommended models:
+2. Pull a model tailored for coding. **Note**: Base coding models work best for Fill-in-the-Middle (FIM) autocomplete. Instruct/Reasoning models (like `qwen` or `deepseek-r1`) might return chat formatting or "thinking" blocks instead of raw code.
+   Recommended models:
    - `starcoder2`
-   - `qwen2.5-coder`
+   - `qwen2.5-coder` (Base model preferred over Instruct)
    - `deepseek-coder`
    
    ```bash

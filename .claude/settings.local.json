@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:docs.continue.dev)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm run:*)",
+      "WebFetch(domain:langchain-ai.github.io)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:docs.langchain.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:techcommunity.microsoft.com)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:js.langchain.com)",
+      "WebFetch(domain:v03.api.js.langchain.com)",
+      "WebFetch(domain:hadoan.medium.com)",
+      "WebFetch(domain:javascript-conference.com)",
+      "WebFetch(domain:www.higherpass.com)",
+      "WebFetch(domain:www.js-craft.io)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
