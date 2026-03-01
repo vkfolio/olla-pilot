@@ -121,5 +121,6 @@ export function isThinkingModel(modelName: string): boolean {
     const name = modelName.toLowerCase();
     return name.includes('qwen3') ||
            name.includes('deepseek-r1') ||
-           name.includes('qwq');
+           name.includes('qwq') ||
+           name.includes('glm');
 }

@@ -8,6 +8,7 @@ import { getOllamaBaseUrl } from './services/ollamaService';
 let statusBarItem: vscode.StatusBarItem;
 let ollamaService: OllamaService;
 let completionProvider: OllamaInlineCompletionProvider;
+let outputChannel: vscode.OutputChannel;
 let currentModel: string = '';
 let isSuggestionsEnabled: boolean = true;
 
@@ -15,6 +16,8 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('OllaPilot Extension is now active!');
 
     ollamaService = new OllamaService();
+    outputChannel = vscode.window.createOutputChannel('OllaPilot');
+    context.subscriptions.push(outputChannel);
 
     const config = vscode.workspace.getConfiguration('ollapilot');
     isSuggestionsEnabled = config.get<boolean>('enabled', true);
@@ -24,8 +27,14 @@ export function activate(context: vscode.ExtensionContext) {
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     context.subscriptions.push(statusBarItem);
 
+    // Show output channel command
+    const showOutputCmd = vscode.commands.registerCommand('ollapilot.showOutput', () => {
+        outputChannel.show(true);
+    });
+    context.subscriptions.push(showOutputCmd);
+
     // Inline completion provider
-    completionProvider = new OllamaInlineCompletionProvider(ollamaService, currentModel, isSuggestionsEnabled);
+    completionProvider = new OllamaInlineCompletionProvider(ollamaService, currentModel, isSuggestionsEnabled, outputChannel, statusBarItem);
     const providerDisposable = vscode.languages.registerInlineCompletionItemProvider(
         { pattern: '**' },
         completionProvider

@@ -9,14 +9,26 @@ export class OllamaInlineCompletionProvider implements vscode.InlineCompletionIt
     private isEnabled: boolean;
     private currentAbortController: AbortController | null = null;
     private completionCache: Map<string, { text: string; timestamp: number }> = new Map();
+    private outputChannel: vscode.OutputChannel;
+    private statusBarItem: vscode.StatusBarItem;
+    private savedStatusBarText: string = '';
+    private savedStatusBarCommand: string | undefined;
 
     private static readonly CACHE_TTL_MS = 30_000;
     private static readonly CACHE_MAX_SIZE = 50;
 
-    constructor(ollamaService: OllamaService, initialModel: string, isEnabled: boolean) {
+    constructor(
+        ollamaService: OllamaService,
+        initialModel: string,
+        isEnabled: boolean,
+        outputChannel: vscode.OutputChannel,
+        statusBarItem: vscode.StatusBarItem
+    ) {
         this.ollamaService = ollamaService;
         this.currentModel = initialModel;
         this.isEnabled = isEnabled;
+        this.outputChannel = outputChannel;
+        this.statusBarItem = statusBarItem;
     }
 
     public setModel(model: string) {
@@ -28,7 +40,11 @@ export class OllamaInlineCompletionProvider implements vscode.InlineCompletionIt
     }
 
     private get debounceMs(): number {
-        return vscode.workspace.getConfiguration('ollapilot').get<number>('debounceMs', 300);
+        return vscode.workspace.getConfiguration('ollapilot').get<number>('debounceMs', 500);
+    }
+
+    private get requestTimeout(): number {
+        return vscode.workspace.getConfiguration('ollapilot').get<number>('requestTimeout', 30000);
     }
 
     private isInCommentContext(document: vscode.TextDocument, position: vscode.Position): boolean {
@@ -155,14 +171,37 @@ export class OllamaInlineCompletionProvider implements vscode.InlineCompletionIt
         const abortController = new AbortController();
         this.currentAbortController = abortController;
 
-        const cancellationListener = token.onCancellationRequested(() => {
+        // Timeout: abort if the model takes too long
+        const timeoutId = setTimeout(() => {
+            console.log(`[OllaPilot] Request timed out after ${this.requestTimeout}ms`);
             abortController.abort();
-        });
+        }, this.requestTimeout);
+
+        // NOTE: We intentionally do NOT bridge VSCode's CancellationToken to the
+        // AbortController. VSCode cancels tokens very aggressively (on every keystroke),
+        // which kills in-flight requests before slow models can respond. Instead, we
+        // only abort when: (1) a NEW request supersedes this one (see above), or
+        // (2) the request timeout expires. The result is still cached and checked for
+        // staleness before being shown.
+
+        // Switch status bar to "thinking..." with click to show output
+        this.savedStatusBarText = this.statusBarItem.text;
+        this.savedStatusBarCommand = this.statusBarItem.command as string | undefined;
+        this.statusBarItem.text = '$(sync~spin) Ollama thinking...';
+        this.statusBarItem.command = 'ollapilot.showOutput';
+
+        const requestStart = Date.now();
+        const fileName = document.fileName.split(/[/\\]/).pop() || document.fileName;
+
+        this.outputChannel.appendLine(`\n── Request ──────────────────────────`);
+        this.outputChannel.appendLine(`Time:   ${new Date().toLocaleTimeString()}`);
+        this.outputChannel.appendLine(`Model:  ${this.currentModel}`);
+        this.outputChannel.appendLine(`File:   ${fileName} (${document.languageId})`);
+        this.outputChannel.appendLine(`Mode:   ${singleLineMode ? 'single-line' : 'multi-line'}${isCommentContext ? ' (comment)' : ''}`);
+        this.outputChannel.appendLine(`Prefix: ...${truncatedPrefix.slice(-80).replace(/\n/g, '\\n')}`);
+        this.outputChannel.appendLine(`Status: Waiting for response...`);
 
         try {
-            vscode.window.setStatusBarMessage('$(sync~spin) Ollama thinking...', 3000);
-
-            console.log(`[OllaPilot] Sending request to Ollama with model: ${this.currentModel}`);
             const completion = await this.ollamaService.generateCompletion(
                 this.currentModel,
                 truncatedPrefix,
@@ -173,24 +212,47 @@ export class OllamaInlineCompletionProvider implements vscode.InlineCompletionIt
                 abortController.signal
             );
 
-            if (token.isCancellationRequested || !completion) { return null; }
+            const elapsed = Date.now() - requestStart;
 
-            console.log(`[OllaPilot] Received completion: ${completion}`);
+            if (!completion) {
+                this.outputChannel.appendLine(`Result: Empty (${elapsed}ms)`);
+                return null;
+            }
+
+            this.outputChannel.appendLine(`Result: ${completion.substring(0, 200).replace(/\n/g, '\\n')} (${elapsed}ms)`);
 
             const cleaned = postProcess(completion, truncatedPrefix, truncatedSuffix, isCommentContext);
-            if (!cleaned) { return null; }
+            if (!cleaned) {
+                this.outputChannel.appendLine(`Post-process: Filtered out`);
+                return null;
+            }
 
+            this.outputChannel.appendLine(`Output: ${cleaned.substring(0, 200).replace(/\n/g, '\\n')}`);
             this.setCachedCompletion(cacheKey, cleaned);
+
+            if (token.isCancellationRequested) {
+                this.outputChannel.appendLine(`Status: Cached (user kept typing)`);
+                return null;
+            }
+
+            this.outputChannel.appendLine(`Status: Shown to user`);
 
             return [{
                 insertText: cleaned,
                 range: new vscode.Range(position, position)
             }];
-        } catch (err) {
-            console.error('[OllaPilot] Completion error:', err);
+        } catch (err: any) {
+            const elapsed = Date.now() - requestStart;
+            if (err?.name === 'AbortError') {
+                this.outputChannel.appendLine(`Status: Aborted (${elapsed}ms)`);
+            } else {
+                this.outputChannel.appendLine(`Error:  ${err?.message || err} (${elapsed}ms)`);
+            }
             return null;
         } finally {
-            cancellationListener.dispose();
+            clearTimeout(timeoutId);
+            this.statusBarItem.text = this.savedStatusBarText;
+            this.statusBarItem.command = this.savedStatusBarCommand;
             if (this.currentAbortController === abortController) {
                 this.currentAbortController = null;
             }

@@ -2,7 +2,7 @@
   "name": "olla-pilot",
   "displayName": "OllaPilot: Local Code Suggestions",
   "description": "Blazing fast, local GitHub Copilot alternative powered by Ollama",
-  "version": "1.0.0",
+  "version": "2.0.2",
   "publisher": "vigneshkarnika",
   "repository": {
     "type": "git",
@@ -85,10 +85,24 @@
         },
         "ollapilot.debounceMs": {
           "type": "number",
-          "default": 300,
+          "default": 500,
           "minimum": 100,
-          "maximum": 2000,
+          "maximum": 5000,
           "description": "Debounce delay in milliseconds before triggering completion (lower = faster, higher = less load)"
+        },
+        "ollapilot.maxTokens": {
+          "type": "number",
+          "default": 128,
+          "minimum": 16,
+          "maximum": 1024,
+          "description": "Maximum number of tokens to generate for inline completions (higher = longer suggestions but slower)"
+        },
+        "ollapilot.requestTimeout": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 5000,
+          "maximum": 120000,
+          "description": "Timeout in milliseconds for completion requests (increase for slow models)"
         }
       }
     }

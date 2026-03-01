@@ -19,7 +19,8 @@
       "WebFetch(domain:www.higherpass.com)",
       "WebFetch(domain:www.js-craft.io)",
       "Bash(npm install:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx vsce:*)"
     ]
   }
 }

@@ -70,6 +70,9 @@ export class OllamaService {
             stopTokens.push('\n');
         }
 
+        const config = vscode.workspace.getConfiguration('ollapilot');
+        const maxTokens = config.get<number>('maxTokens', 128);
+
         const requestBody: any = {
             model: model,
             messages: [
@@ -79,7 +82,7 @@ export class OllamaService {
             stream: false,
             options: {
                 temperature: 0.1,
-                num_predict: singleLineMode ? 60 : 128,
+                num_predict: singleLineMode ? Math.min(60, maxTokens) : maxTokens,
                 top_k: 30,
                 top_p: 0.9,
                 repeat_penalty: 1.1,
@@ -108,8 +111,34 @@ export class OllamaService {
 
         const data = await response.json() as any;
 
+        console.log('[OllaPilot] Chat API response data:', JSON.stringify(data).substring(0, 500));
+
         if (data?.message?.content && typeof data.message.content === 'string' && data.message.content.trim() !== '') {
             return data.message.content.trimEnd();
+        }
+
+        // Some models return response at top level instead of message.content
+        if (data?.response && typeof data.response === 'string' && data.response.trim() !== '') {
+            return data.response.trimEnd();
+        }
+
+        // Fallback: thinking model returned content in thinking field despite think:false
+        // (some models ignore the flag on first request after loading)
+        if (data?.message?.thinking && typeof data.message.thinking === 'string' && data.message.thinking.trim() !== '') {
+            console.log('[OllaPilot] Content empty but thinking field has text — extracting from thinking');
+            // The thinking field is reasoning, not a direct completion.
+            // Try to find the actual completion output at the end of the thinking.
+            const thinking = data.message.thinking;
+            // Look for a code block or quoted completion in the thinking
+            const codeMatch = thinking.match(/```[a-zA-Z]*\n?([\s\S]*?)```/);
+            if (codeMatch && codeMatch[1].trim()) {
+                return codeMatch[1].trim();
+            }
+            // Look for "Output:" or "Completion:" followed by the actual text
+            const outputMatch = thinking.match(/(?:Output|Completion|Result|Answer)[:\s]*[`"']?([^\n`"']+)/i);
+            if (outputMatch && outputMatch[1].trim()) {
+                return outputMatch[1].trim();
+            }
         }
 
         console.log('[OllaPilot] Chat API returned empty response, discarding.');
@@ -141,6 +170,9 @@ export class OllamaService {
                 stopTokens.push('\n');
             }
 
+            const config = vscode.workspace.getConfiguration('ollapilot');
+            const maxTokens = config.get<number>('maxTokens', 128);
+
             const requestBody = {
                 model: model,
                 prompt: fullPrompt,
@@ -148,7 +180,7 @@ export class OllamaService {
                 raw: true,
                 options: {
                     temperature: 0.1,
-                    num_predict: singleLineMode ? 60 : 128,
+                    num_predict: singleLineMode ? Math.min(60, maxTokens) : maxTokens,
                     top_k: 30,
                     top_p: 0.9,
                     repeat_penalty: 1.1,
